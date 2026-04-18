@@ -122,7 +122,7 @@ export const AnalyticsDashboard = () => {
     { name: 'Positive', value: sentimentCount.Positive },
     { name: 'Neutral', value: sentimentCount.Neutral },
     { name: 'Negative', value: sentimentCount.Negative },
-  ].filter(d => d.value > 0); // Hide empty slices
+  ]; // Always show all sentiments, even if 0
 
   const totalScoresSum = chartData.reduce((acc, q) => acc + q.Score, 0);
   const validQuestionsCount = chartData.filter(q => q.Score > 0).length || 1;
