@@ -35,6 +35,28 @@ const SCORE_MAP = {
 
 const COLORS = ['#34c759', '#ffcc00', '#ff3b30'];
 
+const normalizeGroupName = (raw) => {
+  if (!raw) return "Unknown";
+  const clean = raw.toString().trim().toUpperCase();
+  
+  // Smart filter for medical group formats: e.g. 20-09b, 09B, XF-20-09-B
+  const regex = /^(?:XF[\s\-]*)?(?:(2[0-9])[\s\-]*)?0*(\d{1,3})[\s\-]*([A-Z])?$/;
+  const match = clean.match(regex);
+  
+  if (match) {
+    const year = match[1] || "20"; 
+    const group = match[2].padStart(2, '0'); 
+    const letter = match[3] || "";
+    
+    if (letter) {
+      return `XF-${year}-${group}-${letter}`;
+    } else {
+      return `XF-${year}-${group}`;
+    }
+  }
+  return clean; // Retain original if parsing fails
+};
+
 export const AnalyticsDashboard = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +168,7 @@ export const AnalyticsDashboard = () => {
       // Data Processing for PDF
       const groupMap = {};
       reportData.forEach(r => {
-        const gn = r.group_name && r.group_name.trim() !== '' ? r.group_name.trim() : 'Unknown';
+        const gn = r.group_name ? normalizeGroupName(r.group_name) : 'Unknown';
         if (!groupMap[gn]) {
           groupMap[gn] = {
             name: gn,
@@ -256,7 +278,7 @@ export const AnalyticsDashboard = () => {
   ];
 
   const overallAvg = questionAverages.reduce((acc, q) => acc + q.Score, 0) / (questionAverages.length || 1);
-  const photosList = data.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name }));
+  const photosList = data.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name ? normalizeGroupName(r.group_name) : 'Unknown' }));
 
   return (
     <div className="app-container">
