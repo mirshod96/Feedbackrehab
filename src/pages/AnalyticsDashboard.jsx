@@ -151,7 +151,7 @@ export const AnalyticsDashboard = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <GlassContainer>
           <h3 className="mb-6">Average Score by Question</h3>
-          <div style={{ height: '400px', width: '100%' }}>
+          <div style={{ height: '400px', minHeight: '400px', width: '100%', position: 'relative' }}>
             {totalResponses === 0 ? (
               <div style={{ display: 'flex', height: '100%', justifyContent: 'center', alignItems: 'center', color: 'var(--color-text-muted)' }}>No data to display</div>
             ) : (
@@ -169,7 +169,7 @@ export const AnalyticsDashboard = () => {
 
         <GlassContainer>
           <h3 className="mb-6">Overall Sentiment Analysis</h3>
-          <div style={{ height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ height: '350px', minHeight: '350px', width: '100%', position: 'relative' }}>
             {pieData.length === 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>No data to display</div>
             ) : (
