@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { GlassContainer } from '../components/ui/GlassContainer';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { Button } from '../components/ui/Button';
+import { useRef } from 'react';
 
 const QUESTIONS = [
   "Knowledge Depth",
@@ -36,6 +40,38 @@ export const AnalyticsDashboard = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const printRef = useRef(null);
+
+  const handleExportPDF = async () => {
+    if (!printRef.current) return;
+    setIsExporting(true);
+    try {
+      const element = printRef.current;
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        backgroundColor: '#f5f5f7',
+        useCORS: true
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('Academic_Analytics_Report.pdf');
+    } catch (err) {
+      console.error('Failed to export PDF', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -99,14 +135,20 @@ export const AnalyticsDashboard = () => {
 
   return (
     <div className="app-container">
-      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 style={{ background: 'linear-gradient(90deg, #1d1d1f, #86868b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Analytics Dashboard
-        </h1>
-        <p className="text-muted">Anonymous Aggregated Feedback • Rehabilitology & Sports Medicine</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ textAlign: 'left' }}>
+          <h1 style={{ background: 'linear-gradient(90deg, #1d1d1f, #86868b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
+            Analytics Dashboard
+          </h1>
+          <p className="text-muted" style={{ margin: '0.5rem 0 0 0' }}>Anonymous Aggregated Feedback • Rehabilitology & Sports Medicine</p>
+        </div>
+        <Button onClick={handleExportPDF} isLoading={isExporting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '0.6rem 1.2rem', whiteSpace: 'nowrap' }}>
+          <Download size={18} /> Export PDF Report
+        </Button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div ref={printRef} style={{ backgroundColor: 'var(--color-bg)', padding: '1rem 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <GlassContainer style={{ textAlign: 'center', padding: '1.5rem' }}>
           <div className="text-muted" style={{ fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Total Responses</div>
           <div style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totalResponses}</div>
