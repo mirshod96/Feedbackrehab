@@ -151,11 +151,11 @@ export const AnalyticsDashboard = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <GlassContainer>
           <h3 className="mb-6">Average Score by Question</h3>
-          <div style={{ height: '400px', minHeight: '400px', width: '100%', position: 'relative' }}>
+          <div style={{ width: '100%' }}>
             {totalResponses === 0 ? (
-              <div style={{ display: 'flex', height: '100%', justifyContent: 'center', alignItems: 'center', color: 'var(--color-text-muted)' }}>No data to display</div>
+              <div style={{ display: 'flex', height: '400px', justifyContent: 'center', alignItems: 'center', color: 'var(--color-text-muted)' }}>No data to display</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                   <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} interval={0} tick={{ fontSize: 12, fill: 'var(--color-text-muted)' }} />
                   <YAxis domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} tick={{ fill: 'var(--color-text-muted)' }} />
@@ -169,11 +169,11 @@ export const AnalyticsDashboard = () => {
 
         <GlassContainer>
           <h3 className="mb-6">Overall Sentiment Analysis</h3>
-          <div style={{ height: '350px', minHeight: '350px', width: '100%', position: 'relative' }}>
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             {pieData.length === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>No data to display</div>
+              <div style={{ display: 'flex', height: '350px', alignItems: 'center', color: 'var(--color-text-muted)' }}>No data to display</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie data={pieData} cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value">
                     {pieData.map((entry, index) => {
