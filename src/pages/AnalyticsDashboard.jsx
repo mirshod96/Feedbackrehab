@@ -229,6 +229,7 @@ export const AnalyticsDashboard = () => {
           </GlassContainer>
         )}
       </div>
+      </div>
     </div>
   );
 };
