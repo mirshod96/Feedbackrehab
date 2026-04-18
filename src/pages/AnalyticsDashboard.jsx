@@ -103,7 +103,7 @@ export const AnalyticsDashboard = () => {
   // Real Supabase OTP - Verify Code
   const handleVerifyOtp = async () => {
     if (otp.length < 6) {
-      setModalErr('Please enter the 6-digit code.');
+      setModalErr('Please enter the verification code.');
       return;
     }
     setModalErr('');
@@ -385,12 +385,12 @@ export const AnalyticsDashboard = () => {
                   <Key size={16} /> Enter Verification Code
                 </label>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '-0.5rem 0 0.5rem 0' }}>
-                  A secure 6-digit code has been sent to <strong>{email}</strong>. Please check your inbox.
+                  A secure verification code has been sent to <strong>{email}</strong>. Please check your inbox.
                 </p>
                 <TextInput 
                   type="text" 
-                  placeholder="------" 
-                  maxLength={6}
+                  placeholder="--------" 
+                  maxLength={8}
                   style={{ textAlign: 'center', letterSpacing: '0.5rem', fontSize: '1.5rem' }}
                   value={otp} 
                   onChange={(e) => setOtp(e.target.value)} 
