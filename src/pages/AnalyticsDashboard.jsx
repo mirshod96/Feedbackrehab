@@ -179,7 +179,12 @@ export const AnalyticsDashboard = () => {
         }
         
         groupMap[gn].total += 1;
-        const answers = r.answers;
+        
+        let answers = r.answers;
+        if (typeof answers === 'string') {
+          try { answers = JSON.parse(answers); } catch(e) { return; }
+        }
+        
         if (answers) {
           Object.values(answers).forEach((ans, i) => {
             const score = SCORE_MAP[ans];
@@ -249,8 +254,13 @@ export const AnalyticsDashboard = () => {
   let sentimentCount = { Positive: 0, Neutral: 0, Negative: 0 };
 
   data.forEach(response => {
-    const answers = response.answers;
+    let answers = response.answers;
     if (!answers) return;
+    
+    // Defensive: Parse if stored as string in some environments
+    if (typeof answers === 'string') {
+      try { answers = JSON.parse(answers); } catch(e) { return; }
+    }
 
     Object.keys(answers).forEach(qIndex => {
       const ans = answers[qIndex];
