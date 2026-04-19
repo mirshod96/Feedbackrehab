@@ -35,6 +35,7 @@ export const AnalyticsDashboard = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -206,7 +207,7 @@ export const AnalyticsDashboard = () => {
             <h3 className="mb-6">Class Photo Album</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.5rem' }}>
               {photosList.map((photo, i) => (
-                <div key={i} style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)' }}>
+                <div key={i} style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)', cursor: 'zoom-in', transition: 'transform 0.2s ease' }} onClick={() => setSelectedPhoto(photo.url)} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                   <img src={photo.url} alt={`Class group ${photo.group}`} loading="lazy" decoding="async" style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }} />
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '0.6rem', fontSize: '0.9rem', fontWeight: 600, textAlign: 'center' }}>
                     Group: {photo.group}
@@ -216,7 +217,29 @@ export const AnalyticsDashboard = () => {
             </div>
           </GlassContainer>
         )}
+        )}
       </div>
+
+      {/* Fullscreen Lightbox Modal */}
+      {selectedPhoto && (
+        <div 
+          onClick={() => setSelectedPhoto(null)}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem', cursor: 'zoom-out' }}
+        >
+          <img 
+            src={selectedPhoto} 
+            alt="Full screen view" 
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button 
+            onClick={() => setSelectedPhoto(null)}
+            style={{ position: 'absolute', top: '1.5rem', right: '2rem', background: 'none', border: 'none', color: 'white', fontSize: '2.5rem', cursor: 'pointer', padding: '1rem' }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
     </div>
   );
 };
