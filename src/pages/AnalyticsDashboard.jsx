@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Loader2, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const QUESTIONS = [
   "Knowledge Depth",
@@ -182,7 +182,7 @@ export const AnalyticsDashboard = () => {
       doc.setTextColor(100, 100, 100);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 28, { align: "center" });
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 40,
         head: [['Metric', 'Value']],
         body: [
@@ -194,7 +194,7 @@ export const AnalyticsDashboard = () => {
         headStyles: { fillColor: [40, 40, 40] }
       });
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 15,
         head: [['Academic Group', 'Participants', 'Avg Score (Out of 4)', 'Positive', 'Neutral', 'Negative']],
         body: groupsArr.map(g => [
