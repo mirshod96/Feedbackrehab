@@ -43,6 +43,22 @@ export const AnalyticsDashboard = () => {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutTime, setLockoutTime] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (lockoutTime > 0) {
+      interval = setInterval(() => {
+        setLockoutTime((prev) => prev - 1);
+      }, 1000);
+    }
+    if (lockoutTime === 0 && failedAttempts >= 3) {
+      setFailedAttempts(0);
+      setPinError('');
+    }
+    return () => clearInterval(interval);
+  }, [lockoutTime, failedAttempts]);
 
   useEffect(() => {
     fetchData();
@@ -142,11 +158,23 @@ export const AnalyticsDashboard = () => {
   const photosList = actualData.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name || 'Unknown' }));
 
   const submitPinAndExport = async () => {
-    if (pinInput !== '2002') {
-      setPinError('Incorrect PIN. Access Denied.');
+    if (lockoutTime > 0) return;
+
+    if (btoa(pinInput) !== 'MjAwMg==') {
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      
+      if (newAttempts >= 3) {
+        setLockoutTime(60);
+        setPinError(`Too many attempts! Locked for 60 seconds.`);
+      } else {
+        setPinError(`Incorrect PIN. Access Denied. (${3 - newAttempts} attempts left)`);
+      }
       return;
     }
+    
     setPinError('');
+    setFailedAttempts(0);
     setIsExporting(true);
 
     try {
@@ -266,6 +294,7 @@ export const AnalyticsDashboard = () => {
       doc.save(`analytics_report_${new Date().getTime()}.pdf`);
       setShowPinModal(false);
       setPinInput('');
+      setFailedAttempts(0);
     } catch (err) {
       console.error("Failed to generate PDF", err);
     } finally {
@@ -408,15 +437,16 @@ export const AnalyticsDashboard = () => {
               onChange={(e) => setPinInput(e.target.value)}
               placeholder="----"
               maxLength={4}
-              style={{ width: '100%', padding: '1rem', textAlign: 'center', fontSize: '2rem', letterSpacing: '0.5rem', borderRadius: 'var(--radius-md)', border: `2px solid ${pinError ? 'var(--color-danger)' : 'var(--color-border)'}`, backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', marginBottom: '0.5rem', outline: 'none' }}
+              disabled={lockoutTime > 0 || isExporting}
+              style={{ width: '100%', padding: '1rem', textAlign: 'center', fontSize: '2rem', letterSpacing: '0.5rem', borderRadius: 'var(--radius-md)', border: `2px solid ${pinError ? 'var(--color-danger)' : 'var(--color-border)'}`, backgroundColor: lockoutTime > 0 ? 'rgba(255,59,48,0.1)' : 'var(--color-bg)', color: 'var(--color-text)', marginBottom: '0.5rem', outline: 'none', transition: 'all 0.3s' }}
               onKeyDown={(e) => e.key === 'Enter' && submitPinAndExport()}
             />
             
-            <div style={{ height: '20px', marginBottom: '1.5rem' }}>
-              {pinError && <span style={{ color: 'var(--color-danger)', fontSize: '0.85rem', fontWeight: 500 }}>{pinError}</span>}
+            <div style={{ height: '20px', marginBottom: '1.5rem', color: 'var(--color-danger)', fontSize: '0.85rem', fontWeight: 600 }}>
+              {lockoutTime > 0 ? `Locked Out. Try again in ${lockoutTime}s.` : pinError}
             </div>
             
-            <Button onClick={submitPinAndExport} isLoading={isExporting} style={{ width: '100%', padding: '0.8rem', fontSize: '1rem' }}>
+            <Button onClick={submitPinAndExport} isLoading={isExporting} disabled={lockoutTime > 0} style={{ width: '100%', padding: '0.8rem', fontSize: '1rem' }}>
               Unlock & Download
             </Button>
           </GlassContainer>
