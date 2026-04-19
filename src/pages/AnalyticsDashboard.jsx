@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { GlassContainer } from '../components/ui/GlassContainer';
+import { Button } from '../components/ui/Button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const QUESTIONS = [
   "Knowledge Depth",
@@ -36,6 +39,7 @@ export const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -131,13 +135,100 @@ export const AnalyticsDashboard = () => {
   
   const photosList = data.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name || 'Unknown' }));
 
+  const handleExportPDF = () => {
+    setIsExporting(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+
+      const groupsMap = {};
+      data.forEach(response => {
+        const gName = response.group_name || 'Unknown';
+        if (!groupsMap[gName]) {
+          groupsMap[gName] = { name: gName, responsesCount: 0, totalScore: 0, questionsCount: 0, pos: 0, neu: 0, neg: 0 };
+        }
+        
+        groupsMap[gName].responsesCount += 1;
+        
+        let answersObj = response.answers;
+        if (typeof answersObj === 'string') {
+          try { answersObj = JSON.parse(answersObj); } catch(e) {}
+        }
+        
+        if (answersObj && typeof answersObj === 'object') {
+          Object.values(answersObj).forEach(ans => {
+            const score = SCORE_MAP[ans];
+            if (score) {
+              groupsMap[gName].totalScore += score;
+              groupsMap[gName].questionsCount += 1;
+            }
+            if (ans === 'Excellent' || ans === 'Good') groupsMap[gName].pos += 1;
+            else if (ans === 'Satisfactory') groupsMap[gName].neu += 1;
+            else if (ans === 'Poor') groupsMap[gName].neg += 1;
+          });
+        }
+      });
+
+      const groupsArr = Object.values(groupsMap).map(g => ({
+        ...g,
+        avgScore: g.questionsCount > 0 ? (g.totalScore / g.questionsCount).toFixed(2) : '0.00'
+      })).sort((a, b) => b.responsesCount - a.responsesCount);
+
+      doc.setFontSize(18);
+      doc.setTextColor(30, 30, 30);
+      doc.text("Feedback Analytics Report", pageWidth / 2, 20, { align: "center" });
+      
+      doc.setFontSize(11);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 28, { align: "center" });
+
+      doc.autoTable({
+        startY: 40,
+        head: [['Metric', 'Value']],
+        body: [
+          ['Total Participants', totalResponses.toString()],
+          ['Total Unique Groups', groupsArr.length.toString()],
+          ['Overall Average Score', (totalResponses === 0 ? "0.00" : overallAvg.toFixed(2)) + ' / 4.00']
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [40, 40, 40] }
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 15,
+        head: [['Academic Group', 'Participants', 'Avg Score (Out of 4)', 'Positive', 'Neutral', 'Negative']],
+        body: groupsArr.map(g => [
+          g.name,
+          g.responsesCount.toString(),
+          g.avgScore,
+          g.pos.toString(),
+          g.neu.toString(),
+          g.neg.toString()
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [0, 122, 255] }
+      });
+
+      doc.save(`analytics_report_${new Date().getTime()}.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="app-container">
-      <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
-        <h1 style={{ background: 'linear-gradient(90deg, #1d1d1f, #86868b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-          Public Analytics Dashboard
-        </h1>
-        <p className="text-muted" style={{ margin: '0.5rem 0 0 0' }}>Anonymous Aggregated Feedback • Rehabilitology & Sports Medicine</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ textAlign: 'left' }}>
+          <h1 style={{ background: 'linear-gradient(90deg, #1d1d1f, #86868b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
+            Public Analytics Dashboard
+          </h1>
+          <p className="text-muted" style={{ margin: '0.5rem 0 0 0' }}>Anonymous Aggregated Feedback • Rehabilitology & Sports Medicine</p>
+        </div>
+        <Button onClick={handleExportPDF} isLoading={isExporting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '0.6rem 1.2rem', whiteSpace: 'nowrap' }}>
+          <Download size={18} /> Download Excel/PDF Report
+        </Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -216,7 +307,6 @@ export const AnalyticsDashboard = () => {
               ))}
             </div>
           </GlassContainer>
-        )}
         )}
       </div>
 
