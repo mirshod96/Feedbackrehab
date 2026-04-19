@@ -44,7 +44,7 @@ export const AnalyticsDashboard = () => {
     try {
       const { data: responses, error } = await supabase
         .from('responses')
-        .select('answers');
+        .select('answers, photo_url, group_name');
 
       if (error) throw error;
       setData(responses || []);
@@ -127,6 +127,8 @@ export const AnalyticsDashboard = () => {
   const totalScoresSum = chartData.reduce((acc, q) => acc + q.Score, 0);
   const validQuestionsCount = chartData.filter(q => q.Score > 0).length || 1;
   const overallAvg = totalScoresSum / validQuestionsCount;
+  
+  const photosList = data.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name || 'Unknown' }));
 
   return (
     <div className="app-container">
@@ -198,6 +200,22 @@ export const AnalyticsDashboard = () => {
             })}
           </div>
         </GlassContainer>
+
+        {photosList.length > 0 && (
+          <GlassContainer>
+            <h3 className="mb-6">Class Photo Album</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1.5rem' }}>
+              {photosList.map((photo, i) => (
+                <div key={i} style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)' }}>
+                  <img src={photo.url} alt={`Class group ${photo.group}`} loading="lazy" decoding="async" style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '0.6rem', fontSize: '0.9rem', fontWeight: 600, textAlign: 'center' }}>
+                    Group: {photo.group}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassContainer>
+        )}
       </div>
     </div>
   );
