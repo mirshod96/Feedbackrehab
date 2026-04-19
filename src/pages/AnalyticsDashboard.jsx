@@ -52,7 +52,7 @@ export const AnalyticsDashboard = () => {
     try {
       const { data: responses, error } = await supabase
         .from('responses')
-        .select('answers, photo_url, group_name');
+        .select('answers, photo_url, group_name, full_name');
 
       if (error) throw error;
       setData(responses || []);
@@ -167,6 +167,7 @@ export const AnalyticsDashboard = () => {
       const pageWidth = doc.internal.pageSize.width;
 
       const groupsMap = {};
+      const individualArr = [];
       actualData.forEach(response => {
         const gName = response.group_name || 'Unknown';
         if (!groupsMap[gName]) {
@@ -174,6 +175,13 @@ export const AnalyticsDashboard = () => {
         }
         
         groupsMap[gName].responsesCount += 1;
+        
+        // Tracking individual metrics
+        let iTotalScore = 0;
+        let iQuestions = 0;
+        let iPos = 0;
+        let iNeu = 0;
+        let iNeg = 0;
         
         let answersObj = response.answers;
         if (typeof answersObj === 'string') {
@@ -186,12 +194,25 @@ export const AnalyticsDashboard = () => {
             if (score) {
               groupsMap[gName].totalScore += score;
               groupsMap[gName].questionsCount += 1;
+              iTotalScore += score;
+              iQuestions += 1;
             }
-            if (ans === 'Excellent' || ans === 'Good') groupsMap[gName].pos += 1;
-            else if (ans === 'Satisfactory') groupsMap[gName].neu += 1;
-            else if (ans === 'Poor') groupsMap[gName].neg += 1;
+            if (ans === 'Excellent' || ans === 'Good') { groupsMap[gName].pos += 1; iPos += 1; }
+            else if (ans === 'Satisfactory') { groupsMap[gName].neu += 1; iNeu += 1; }
+            else if (ans === 'Poor') { groupsMap[gName].neg += 1; iNeg += 1; }
           });
         }
+
+        let primarySentiment = 'Neutral';
+        if (iPos > iNeg && iPos > iNeu) primarySentiment = 'Positive';
+        else if (iNeg > iPos && iNeg > iNeu) primarySentiment = 'Negative';
+
+        individualArr.push([
+          response.full_name || 'Anonymous',
+          gName,
+          iQuestions > 0 ? (iTotalScore / iQuestions).toFixed(2) : '0.00',
+          primarySentiment
+        ]);
       });
 
       const groupsArr = Object.values(groupsMap).map(g => ({
@@ -232,6 +253,14 @@ export const AnalyticsDashboard = () => {
         ]),
         theme: 'striped',
         headStyles: { fillColor: [0, 122, 255] }
+      });
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 15,
+        head: [['Full Name', 'Group', 'Avg Score', 'Overall Sentiment']],
+        body: individualArr,
+        theme: 'striped',
+        headStyles: { fillColor: [80, 80, 100] }
       });
 
       doc.save(`analytics_report_${new Date().getTime()}.pdf`);
