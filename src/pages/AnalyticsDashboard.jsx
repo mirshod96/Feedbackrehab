@@ -40,6 +40,9 @@ export const AnalyticsDashboard = () => {
   const [error, setError] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -78,13 +81,16 @@ export const AnalyticsDashboard = () => {
     );
   }
 
-  const totalResponses = data.length;
+  // Filter out system metrics
+  const actualData = data.filter(r => r.group_name !== 'SYSTEM_PDF_DOWNLOAD');
+  const downloadsCount = data.filter(r => r.group_name === 'SYSTEM_PDF_DOWNLOAD').length;
+  const totalResponses = actualData.length;
 
   // Initialize accumulators
   let questionAverages = QUESTIONS.map((q) => ({ name: q, totalScore: 0, count: 0 }));
   let sentimentCount = { Positive: 0, Neutral: 0, Negative: 0 };
 
-  data.forEach(response => {
+  actualData.forEach(response => {
     try {
       // Very defensive parsing
       let answersObj = response.answers;
@@ -133,16 +139,35 @@ export const AnalyticsDashboard = () => {
   const validQuestionsCount = chartData.filter(q => q.Score > 0).length || 1;
   const overallAvg = totalScoresSum / validQuestionsCount;
   
-  const photosList = data.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name || 'Unknown' }));
+  const photosList = actualData.filter(r => r.photo_url).map(r => ({ url: r.photo_url, group: r.group_name || 'Unknown' }));
 
-  const handleExportPDF = () => {
+  const submitPinAndExport = async () => {
+    if (pinInput !== '2002') {
+      setPinError('Incorrect PIN. Access Denied.');
+      return;
+    }
+    setPinError('');
     setIsExporting(true);
+
     try {
+      // Record download metric
+      await supabase.from('responses').insert([{
+        full_name: 'System',
+        group_name: 'SYSTEM_PDF_DOWNLOAD',
+        course_name: 'System',
+        last_class_date: new Date().toISOString(),
+        answers: { "0": "System" }
+      }]);
+      
+      // Update local state metric instantly
+      setData(prev => [...prev, { group_name: 'SYSTEM_PDF_DOWNLOAD' }]);
+
+      // Generate PDF
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
 
       const groupsMap = {};
-      data.forEach(response => {
+      actualData.forEach(response => {
         const gName = response.group_name || 'Unknown';
         if (!groupsMap[gName]) {
           groupsMap[gName] = { name: gName, responsesCount: 0, totalScore: 0, questionsCount: 0, pos: 0, neu: 0, neg: 0 };
@@ -210,6 +235,8 @@ export const AnalyticsDashboard = () => {
       });
 
       doc.save(`analytics_report_${new Date().getTime()}.pdf`);
+      setShowPinModal(false);
+      setPinInput('');
     } catch (err) {
       console.error("Failed to generate PDF", err);
     } finally {
@@ -226,7 +253,7 @@ export const AnalyticsDashboard = () => {
           </h1>
           <p className="text-muted" style={{ margin: '0.5rem 0 0 0' }}>Anonymous Aggregated Feedback • Rehabilitology & Sports Medicine</p>
         </div>
-        <Button onClick={handleExportPDF} isLoading={isExporting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '0.6rem 1.2rem', whiteSpace: 'nowrap' }}>
+        <Button onClick={() => setShowPinModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '0.6rem 1.2rem', whiteSpace: 'nowrap' }}>
           <Download size={18} /> Download Excel/PDF Report
         </Button>
       </div>
@@ -239,6 +266,10 @@ export const AnalyticsDashboard = () => {
         <GlassContainer style={{ textAlign: 'center', padding: '1.5rem' }}>
           <div className="text-muted" style={{ fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Overall Average (Out of 4)</div>
           <div style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--color-success)' }}>{totalResponses === 0 ? "0.00" : overallAvg.toFixed(2)}</div>
+        </GlassContainer>
+        <GlassContainer style={{ textAlign: 'center', padding: '1.5rem', border: '1px solid rgba(0, 122, 255, 0.3)' }}>
+          <div className="text-muted" style={{ fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#007aff' }}>PDF Downloads</div>
+          <div style={{ fontSize: '3rem', fontWeight: 700, color: '#007aff' }}>{downloadsCount}</div>
         </GlassContainer>
       </div>
 
@@ -328,6 +359,38 @@ export const AnalyticsDashboard = () => {
           >
             &times;
           </button>
+        </div>
+      )}
+
+      {/* PIN Lock Modal */}
+      {showPinModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+          <GlassContainer style={{ width: '100%', maxWidth: '350px', position: 'relative', textAlign: 'center', padding: '2.5rem 2rem' }}>
+            <button 
+              onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }}
+              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+            >×</button>
+            <h3 style={{ marginBottom: '0.5rem', fontSize: '1.5rem' }}>Secure Download</h3>
+            <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '2rem' }}>Please enter the master PIN code to generate the report</p>
+            
+            <input 
+              type="password"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="----"
+              maxLength={4}
+              style={{ width: '100%', padding: '1rem', textAlign: 'center', fontSize: '2rem', letterSpacing: '0.5rem', borderRadius: 'var(--radius-md)', border: `2px solid ${pinError ? 'var(--color-danger)' : 'var(--color-border)'}`, backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', marginBottom: '0.5rem', outline: 'none' }}
+              onKeyDown={(e) => e.key === 'Enter' && submitPinAndExport()}
+            />
+            
+            <div style={{ height: '20px', marginBottom: '1.5rem' }}>
+              {pinError && <span style={{ color: 'var(--color-danger)', fontSize: '0.85rem', fontWeight: 500 }}>{pinError}</span>}
+            </div>
+            
+            <Button onClick={submitPinAndExport} isLoading={isExporting} style={{ width: '100%', padding: '0.8rem', fontSize: '1rem' }}>
+              Unlock & Download
+            </Button>
+          </GlassContainer>
         </div>
       )}
     </div>
